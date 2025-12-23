@@ -87,7 +87,13 @@ def parse_event(s: str, i: int):
 		if bufstart is not None and i2 > i:
 			bufend = i2
 		i = i2
-		cmd, args, i = parse_command(s, i)
+		try:
+			cmd, args, i = parse_command(s, i)
+		except KeyError:
+			i = s.find("<", i + 1)
+			if i == -1:
+				break
+			continue
 		if bufstart is not None and bufend is None:
 			while i < len(s) and not s[i].strip():
 				i += 1
@@ -97,9 +103,9 @@ def parse_event(s: str, i: int):
 				next_fac_open = bool(args and args[0] != "0000")
 				fac_open = fac_open or next_fac_open
 			case "MSG" | "MS2" | "MS3" | "MS4" | "TUR":
-				if cmd == "MSG":
+				if cmd in ("MSG", "MS3"):
 					affects_fac_open = True
-				elif cmd in ("MS2", "MS3", "MS4"):
+				elif cmd in ("MS2", "MS4"):
 					affects_fac_open = False
 				if bufstart is None:
 					while i < len(s) and not s[i].strip():
@@ -146,10 +152,7 @@ def split_tsc_text(s: str):
 				i += 1
 			if i >= len(s) or s[i] == "#":
 				continue
-			try:
-				i, subs = parse_event(s, i)
-			except KeyError:
-				continue
+			i, subs = parse_event(s, i)
 			subs = [t for t in subs if t[0] != t[1]]
 			out.append(subs)
 	except Exception:
@@ -174,7 +177,11 @@ def find_all_words(s: str):
 					try:
 						cmd, args, i2 = parse_command(curr, i)
 					except KeyError:
-						break
+						i2 = curr.find("<", i + 1)
+						if i2 == -1:
+							break
+						curr = curr[:i] + curr[i2:]
+						continue
 					curr = curr[:i] + curr[i2:]
 				match = re.match(WORD, curr)
 				if match:
@@ -217,7 +224,12 @@ def apply_random_translate(s: str, dictionary: tuple = (), chance: float = 0.5, 
 					j = curr.find("<")
 					if j < 0:
 						break
-					cmd, args, j2 = parse_command(curr, j)
+					try:
+						cmd, args, j2 = parse_command(curr, j)
+					except KeyError:
+						j2 = curr.find("<", j + 1)
+						if j2 == -1:
+							break
 					if j:
 						words.append(curr[:j])
 					words.append(curr[j:j2])
