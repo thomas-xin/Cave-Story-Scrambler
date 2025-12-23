@@ -7,7 +7,7 @@ import sys
 PUNCTUATION = ",.:;?!"
 WORD = r"[A-Za-z0-9']+"
 
-def read_tsc(fn):
+def read_tsc(fn: str) -> str:
 	size = os.path.getsize(fn)
 	mp = size // 2
 	with open(fn, "rb") as f:
@@ -17,15 +17,15 @@ def read_tsc(fn):
 		b = f.read()
 	a = bytearray(c - cipher & 255 for c in b)
 	a[mp] = cipher
-	s = a.decode("shift_jis").lstrip().replace("\x00\x00", "\r\n")
+	s = a.decode("shift_jis", "replace").lstrip().replace("\x00\x00", "\r\n")
 	return "\r\n" + s
 
-def write_tsc(s, fn, compat=True):
-	b = s.encode("shift_jis")
+def write_tsc(s: str, fn: str, compat: bool = True):
+	b = s.encode("shift_jis", "replace")
 	if b and compat:
 		b = b"\r\n" + b
 		mp = len(b) // 2
-		while b[mp:mp + 3] != b"\r\n#" and b[mp:mp + 3] != b"\r\n-":
+		while b[mp:mp + 3] != b"\r\n#" and b[mp:mp + 3] != b"\r\n-" and b[mp:mp + 4] != b"  \r\n":
 			b = b"  " + b
 			mp = len(b) // 2
 		b = b" " + b[:mp] + b"\x00" + b[mp:]
@@ -375,7 +375,7 @@ def main():
 		parser.add_argument("-sr", '--scramble-rate', help="Chance for each word to be scrambled; defaults to 0.1", type=float, required=False, default=0.1)
 		parser.add_argument("-f", "--force", action=argparse.BooleanOptionalAction, default=True, help="Forces at least one change per TSC event; defaults to TRUE")
 		parser.add_argument("-tc", "--text-compatible", action=argparse.BooleanOptionalAction, default=True, help="Forces output to be both TSC and TXT compliant; defaults to TRUE")
-		parser.add_argument("-st", "--speed-text", action=argparse.BooleanOptionalAction, default=True, help="Enables a slightly modified version of the SpeedText hack; defaults to TRUE")
+		parser.add_argument("-st", "--speed-text", action=argparse.BooleanOptionalAction, default=True, help="Enables a slightly modified version of the SpeedText hack; CURRENTLY UNIMPLEMENTED")
 		parser.add_argument("-r", "--run", action=argparse.BooleanOptionalAction, default=False, help="Immediately run the game after patching; defaults to FALSE")
 		parser.add_argument("game_folder", help='Top level directory of folder to process. Output will be a copy of this folder with the "~" character appended.')
 		ctx = parser.parse_args()
@@ -478,7 +478,7 @@ def main():
 											continue
 										if random.random() < ctx.scramble_rate * 3:
 											words[i] = randomise_word(word, dictionary)
-								new_name = " ".join(words).encode("shift_jis") + b"\x00"
+								new_name = " ".join(words).encode("shift_jis", "replace") + b"\x00"
 								write_exe_segment(b, segs, curr, new_name)
 							if not read_exe_segment(b, segs, curr + 35):
 								break

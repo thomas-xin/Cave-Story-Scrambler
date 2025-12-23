@@ -1,0 +1,1 @@
+pyinstaller scramble.py -y --onefile --icon scramble.ico
