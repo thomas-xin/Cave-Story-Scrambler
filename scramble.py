@@ -355,11 +355,13 @@ def main():
 			scramble_rate: float
 			force: bool
 			text_compatible: bool
+			speed_text: bool
 			run: bool
 			game_folder: str
 		ctx = MockArgs(
 			f'%(prog)s {__version__}',
 			0.1,
+			True,
 			True,
 			True,
 			True,
@@ -386,41 +388,42 @@ def main():
 		with open(custom_dictionary, "r") as f:
 			s = f.read()
 		dictionary.update(w for i, w in enumerate(s.splitlines()) if len(w) >= 3 or len(w) == 3 and i < 6000 or len(w) == 2 and i < 100)
-	else:
-		for root, dirs, files in os.walk(ctx.game_folder):
-			dirs[:] = [d for d in dirs if d not in ("_internal", "Manual")]
-			for fn in files:
-				path = os.path.join(root, fn)
-				if not fn.endswith(".tsc"):
-					if ctx.text_compatible and fn.endswith(".exe"):
-						with open(path, "rb") as f:
-							b = f.read()
-						segs = read_exe_segments(b)
-						offs = 0x420c55
-						patch = read_patch("E8 76 B3 FE FF")
-						if read_exe_segment(b, segs, offs, offs + len(patch)) == patch:
-							offs = 0x420c2f
-							mapdata = int.from_bytes(read_exe_segment(b, segs, offs, offs + 4), "little")
-							maps = []
-							curr = mapdata + 165
-							while True:
-								for i in range(35):
-									if read_exe_segment(b, segs, curr + i) == 0:
-										break
-								if i:
-									name = read_exe_segment(b, segs, curr, curr + i).decode("shift_jis", "replace")
-									words = "".join(c for c in name.casefold() if c != "�").split()
-									for word in words:
-										if not word:
-											continue
-										maps.append(word)
-								if not read_exe_segment(b, segs, curr + 35):
+	has_vanilla = False
+	for root, dirs, files in os.walk(ctx.game_folder):
+		dirs[:] = [d for d in dirs if d not in ("_internal", "Manual")]
+		for fn in files:
+			path = os.path.join(root, fn)
+			if not fn.endswith(".tsc"):
+				if ctx.text_compatible and fn.endswith(".exe"):
+					with open(path, "rb") as f:
+						b = f.read()
+					segs = read_exe_segments(b)
+					offs = 0x420c55
+					patch = read_patch("E8 76 B3 FE FF")
+					if read_exe_segment(b, segs, offs, offs + len(patch)) == patch:
+						offs = 0x420c2f
+						mapdata = int.from_bytes(read_exe_segment(b, segs, offs, offs + 4), "little")
+						maps = []
+						curr = mapdata + 165
+						while True:
+							for i in range(35):
+								if read_exe_segment(b, segs, curr + i) == 0:
 									break
-								curr += 200
-							dictionary.update(maps)
-					continue
-				s = read_tsc(path)
-				dictionary.update(find_all_words(s))
+							if i:
+								name = read_exe_segment(b, segs, curr, curr + i).decode("shift_jis", "replace")
+								words = "".join(c for c in name.casefold() if c != "�").split()
+								for word in words:
+									if not word:
+										continue
+									maps.append(word)
+							if not read_exe_segment(b, segs, curr + 35):
+								break
+							curr += 200
+						dictionary.update(maps)
+						has_vanilla = True
+				continue
+			s = read_tsc(path)
+			dictionary.update(find_all_words(s))
 	dictionary = [w for w in dictionary if len(w) > 1 and (len(w) > 2 or w.isalpha())]
 	dictionary.extend("AI")
 	dictionary.sort()
@@ -436,8 +439,6 @@ def main():
 	for root, dirs, files in os.walk(ctx.game_folder):
 		dirs[:] = [d for d in dirs if d not in ("_internal", "Manual")]
 		for fn in files:
-			if fn.endswith(".py"):
-				continue
 			path = os.path.join(root, fn)
 			folder = root.replace(ctx.game_folder, output_dir)
 			os.makedirs(folder, exist_ok=True)
@@ -495,10 +496,6 @@ def main():
 								b"",
 								read_patch("74 05 8B 4D F4 EB 0E 03 45 08 80 38 00 75 0E B1 0D 90 90 90 90"),
 							)
-						# if conditional_exe_patch(
-						# 	b, segs,
-							
-						# )
 						print("Patched exe:", path)
 					with open(path2, "wb") as f:
 						f.write(b)
@@ -512,7 +509,7 @@ def main():
 				continue
 			s = read_tsc(path)
 			s = apply_random_translate(s, dictionary, chance=ctx.scramble_rate, force=ctx.force)
-			write_tsc(s, path2, compat=ctx.text_compatible)
+			write_tsc(s, path2, compat=has_vanilla and ctx.text_compatible)
 			patched += 1
 	if patched:
 		print("Total patched files:", patched)
