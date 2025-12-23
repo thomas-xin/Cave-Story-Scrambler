@@ -3,7 +3,7 @@ A text scrambler for the game Cave Story. Works with the vanilla game, as well a
 
 ## Usage
 The script may be run as part of a mod, by taking the following steps:
-- Copy `scramble.exe` and the `_internal` folder, as well as optionally `dictionary.txt` (if a full dictionary of words is intended, rather than only existing words from the game), into the Cave Story folder's main directory (same as Doukutsu.exe).
+- Copy `scramble.exe`, as well as optionally `dictionary.txt` (if a full dictionary of words is intended, rather than only existing words from the game), into the Cave Story folder's main directory (same as Doukutsu.exe).
 - Run `scramble.exe`, which should create a patched copy of the game folder, and automatically run the game afterwards.
     - The original game folder and all its contents will *not* be modified.
 
