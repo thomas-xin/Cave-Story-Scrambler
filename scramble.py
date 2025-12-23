@@ -35,7 +35,7 @@ def write_tsc(s: str, fn: str, compat: bool = True):
 		cipher = b[mp]
 		a = bytearray(c + cipher & 255 for c in b)
 		a[mp] = cipher
-		b = a.data
+		b = a
 	with open(fn, "wb") as f:
 		f.write(b)
 
